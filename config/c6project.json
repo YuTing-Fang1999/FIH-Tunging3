@@ -1,0 +1,72 @@
+{
+    "OPE": {
+        "WNR": {
+            "file_path": "/cpp/cpp_snapshot/",
+            "main_node": [4, 1, 5],
+            "trigger_node": 0,
+            "param_node": [6, 7],
+            "param_names": [
+                "denoise_weight_y",
+                "denoise_weight_chroma"
+            ],
+            "range_names": [
+                "denoise_weight_y",
+                "denoise_weight_chroma"
+            ],
+            "defult_range": [
+                [0, 1], [0, 1]
+            ],
+            "title": [
+                "Denoise Weight"
+            ],
+            "name": [
+                [
+                    "Y(3)",
+                    "Chroma(2,2)"
+                ]
+            ],
+            "col": [
+                [
+                    3,
+                    2
+                ]
+            ],
+            "expand": [
+                1,
+                1,
+                1,
+                2,
+                2
+            ],
+            "step": 0.01,
+            "rule": [
+                {
+                    "idx": [
+                        0,
+                        1
+                    ],
+                    "op": [
+                        "-"
+                    ],
+                    "between": [
+                        0,
+                        0.2
+                    ]
+                },
+                {
+                    "idx": [
+                        1,
+                        2
+                    ],
+                    "op": [
+                        "-"
+                    ],
+                    "between": [
+                        0,
+                        0.2
+                    ]
+                }
+            ]
+        }
+    }
+}

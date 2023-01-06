@@ -1,0 +1,16 @@
+__pycache__
+.ipynb_checkpoints
+initial
+ans
+generation*
+best
+best_photo
+target
+*.bin
+*.pptx
+setting.json
+gain*
+ISO200*
+*gain*
+origin.jpg
+target.jpg
