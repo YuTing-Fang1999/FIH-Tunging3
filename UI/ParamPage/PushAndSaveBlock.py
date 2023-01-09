@@ -43,8 +43,7 @@ class PushWorker(QThread):
 
 class PushAndSaveBlock(QWidget):
     alert_info_signal = pyqtSignal(str, str)
-    set_param_value_signal = pyqtSignal()
-    get_UI_date_signal = pyqtSignal()
+    get_and_set_param_value_signal = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -96,7 +95,7 @@ class PushAndSaveBlock(QWidget):
         
 
     def setup_controller(self):
-        self.btn_set_to_xml.clicked.connect(self.set_param_value_signal.emit)
+        self.btn_set_to_xml.clicked.connect(self.get_and_set_param_value_signal.emit)
         self.btn_push_phone.clicked.connect(lambda: self.push_phone(is_capture=False, is_set_to_xml=False))
         self.btn_push_phone_capture.clicked.connect(lambda: self.push_phone(is_capture=True, is_set_to_xml=True))
         self.btn_capture.clicked.connect(self.do_capture)
@@ -112,7 +111,6 @@ class PushAndSaveBlock(QWidget):
         mkdir(dir_name)
 
         self.capture_worker.saved_path = "{}/{}".format(dir_name, img_name)
-        self.get_UI_date_signal.emit()
 
     # def set_to_xml(self):
     #     param_value = self.ui.parameter_setting_page.param_modify_block.get_param_value()
@@ -145,7 +143,7 @@ class PushAndSaveBlock(QWidget):
                 self.alert_info_signal.emit("檔名重複", "檔名\n"+path+".jpg\n已存在，請重新命名")
                 return
         if is_set_to_xml:
-            self.set_param_value_signal.emit()
+            self.get_and_set_param_value_signal.emit()
 
         self.push_worker.is_capture = is_capture
         self.push_worker.start()

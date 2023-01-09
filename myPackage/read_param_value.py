@@ -68,7 +68,7 @@ def read_c6_param_value(key_config, project_path, trigger_idx):
     param_value = []
     for param_idx in key_config["param_node"]:
         for i in range(param_node.get(param_idx).length()):
-            param_value.append(float(''.join(param_node.get(param_idx).get(i).text)))
+            param_value.append(float((''.join(param_node.get(param_idx).get(i).text).replace('f',''))))
 
     print(param_value)
     return param_value

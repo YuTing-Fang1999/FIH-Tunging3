@@ -2,6 +2,8 @@ import os
 import xml.etree.ElementTree as ET
 import json
 import numpy as np
+
+from myPackage.Array_Parser import Array_Parser
 # from myPackage.func import curve_converter
 
 def set_c7_param_value(key, key_config, project_path, trigger_idx, param_value):
@@ -54,3 +56,27 @@ def set_c7_param_value(key, key_config, project_path, trigger_idx, param_value):
 
     # write the xml file
     tree.write(xml_path, encoding='UTF-8', xml_declaration=True)
+
+def set_c6_param_value(key, key_config, project_path, trigger_idx, param_value):
+    project_name = os.listdir(project_path+'/src')[0]
+    # print(project_name)
+    path = project_path + '/src/' + project_name + key_config["file_path"] + project_name + "_snapshot_cpp.h"
+
+    with open(path, 'r', encoding='cp1252') as f:
+        text = f.read()
+
+    arr_phaser = Array_Parser(list(text))
+    main_node = arr_phaser
+    for i in key_config["main_node"]:
+        main_node = main_node.get(i)
+
+    param_node = main_node.get(trigger_idx)
+
+    idx = 0
+    for param_idx in key_config["param_node"]:
+        for i in range(param_node.get(param_idx).length()):
+            param_node.get(param_idx).get(i).text = str(param_value[idx])
+            idx+=1
+
+    with open(path, 'w', encoding='cp1252') as f:
+        f.write(''.join(arr_phaser.reconstruct()))

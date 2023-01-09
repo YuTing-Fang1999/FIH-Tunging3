@@ -45,9 +45,10 @@ def read_c6_trigger_data(key_config, project_path):
     for i in range(main_node.length()):
         data = []
         data.append(''.join(main_node.get(i).get(key_config["trigger_node"]).get(2).text))
-        data.append(''.join(main_node.get(i).get(key_config["trigger_node"]).get(1).text))
+        data.append(''.join(main_node.get(i).get(key_config["trigger_node"]).get(3).text))
         data.append(''.join(main_node.get(i).get(key_config["trigger_node"]).get(0).text))
         data.append(''.join(main_node.get(i).get(key_config["trigger_node"]).get(1).text))
+        data = [float(d.replace('f','')) for d in data]
         aec_trigger_datas.append(data)
 
     # print(''.join(main_node.reconstruct()))

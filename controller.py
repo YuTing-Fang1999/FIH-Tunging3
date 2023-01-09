@@ -8,7 +8,7 @@ from myPackage.Capture import Capture
 from myPackage.Tuning.Tuning import Tuning
 from myPackage.read_param_value import read_c7_param_value, read_c6_param_value
 from myPackage.read_trigger_data import read_c7_trigger_data, read_c6_trigger_data
-from myPackage.set_param_value import set_c7_param_value
+from myPackage.set_param_value import set_c7_param_value, set_c6_param_value
 from myPackage.build_and_push import build_and_push_c7
 
 import os
@@ -31,6 +31,7 @@ class MainWindow_controller(QMainWindow):
         self.read_trigger_data["c7project"] = read_c7_trigger_data
 
         self.set_param_value = {}
+        self.set_param_value["c6project"] = set_c6_param_value
         self.set_param_value["c7project"] = set_c7_param_value
 
         self.build_and_push = {}
@@ -50,102 +51,6 @@ class MainWindow_controller(QMainWindow):
 
         self.setup_controller()
         self.ui.param_page.push_and_save_block.capture_worker.capture = self.capture
-
-
-
-    def set_UI_data(self, setting):
-        key_data = self.setting[self.setting["root"]][self.setting["key"]]
-
-        ##### project_page #####
-        if "platform" in setting:
-            self.ui.project_page.platform_selecter.set_platform(setting["platform"])
-
-        if "project_path" in setting:
-            self.ui.project_page.label_project_path.setText(setting["project_path"])
-
-            if os.path.exists(setting["project_path"]):
-                self.set_project(setting["project_path"])
-
-        if "exe_path" in setting:
-            self.ui.project_page.label_exe_path.setText(setting["exe_path"])
-        if "bin_name" in setting:
-            self.ui.project_page.lineEdits_bin_name.setText(setting["bin_name"])
-
-        ##### ROI_page #####
-        if os.path.exists('./capture.jpg'):
-            self.ui.ROI_page.set_photo('./capture.jpg')
-            if "roi" in setting:
-                self.ui.ROI_page.rois = setting["roi"]
-                self.ui.ROI_page.draw_ROI(self.ui.ROI_page.rois)
-
-        if 'target_type' in setting and len(setting["target_type"])>0:
-            assert len(setting["roi"]) == len(setting["target_type"])
-            for i in range(len(setting["target_type"])):
-                self.ui.ROI_page.add_to_table(setting["target_type"][i], setting["target_score"][i], setting["target_weight"][i])
-
-        ##### param_page #####
-        if "param_change_idx" in key_data: 
-            self.ui.param_page.param_modify_block.update_param_change_idx(key_data["param_change_idx"])
-
-        for i, name in enumerate(self.ui.param_page.hyper_setting_block.hyper_param_name):
-            if name in self.setting:
-                self.ui.param_page.hyper_setting_block.lineEdits_hyper_setting[i].setText(str(self.setting[name]))
-
-        if 'saved_dir_name' in self.setting:
-            self.ui.param_page.push_and_save_block.lineEdits_dir_name.setText(self.setting['saved_dir_name'])
-        if 'saved_img_name' in self.setting:
-            self.ui.param_page.push_and_save_block.lineEdits_img_name.setText(self.setting['saved_img_name'] )
-
-        ##### run page #####
-        if "TEST_MODE" in self.setting:
-            self.ui.run_page.upper_part.TEST_MODE.setChecked(self.setting["TEST_MODE"])
-            self.ui.run_page.upper_part.pretrain.setChecked(self.setting["PRETRAIN"])
-            self.ui.run_page.upper_part.train.setChecked(self.setting["TRAIN"])
-        
-    
-    def get_UI_data(self):
-        key_data = self.setting[self.setting["root"]][self.setting["key"]]
-
-        ##### project_page #####
-        self.setting["project_path"] = self.ui.project_page.label_project_path.text()
-        self.setting["exe_path"] = self.ui.project_page.label_exe_path.text()
-        self.setting["bin_name"] = self.ui.project_page.lineEdits_bin_name.text()
-
-        ##### ROI_page #####
-        self.setting["roi"] = self.ui.ROI_page.rois
-
-        assert len(self.setting["roi"]) == self.ui.ROI_page.table.rowCount()
-        self.setting["target_type"] = []
-        self.setting["target_score"] = []
-        self.setting["target_weight"] = []
-        for i in range(self.ui.ROI_page.table.rowCount()):
-            self.setting["target_type"].append(self.ui.ROI_page.table.cellWidget(i, 0).text())
-            self.setting["target_score"].append(float(self.ui.ROI_page.table.cellWidget(i, 1).text()))
-            self.setting["target_weight"].append(float(self.ui.ROI_page.table.cellWidget(i, 2).text()))
-
-        ##### param_page #####
-        self.setting["trigger_idx"] = self.ui.param_page.trigger_selector.currentIndex()
-        self.setting["trigger_name"] = self.ui.param_page.trigger_selector.currentText()
-
-        key_data["param_value"] = self.ui.param_page.param_modify_block.get_param_value()
-        key_data["param_change_idx"] = self.ui.param_page.param_modify_block.get_param_change_idx()
-
-        key_data["coustom_range"] = []
-        for item in self.ui.param_page.param_range_block.param_range_items:
-            for lineEdit in item.lineEdits_coustom_range:
-                if lineEdit.text() != "": 
-                    key_data["coustom_range"].append(json.loads(lineEdit.text()))
-
-        for i, name in enumerate(self.ui.param_page.hyper_setting_block.hyper_param_name):
-            if self.ui.param_page.hyper_setting_block.lineEdits_hyper_setting[i].text()=="":
-                self.setting[name] = ""
-            else:
-                self.setting[name] = int(self.ui.param_page.hyper_setting_block.lineEdits_hyper_setting[i].text())
-
-        ##### run page #####
-        self.setting["TEST_MODE"] = self.ui.run_page.upper_part.TEST_MODE.isChecked()
-        self.setting["PRETRAIN"] = self.ui.run_page.upper_part.pretrain.isChecked()
-        self.setting["TRAIN"] = self.ui.run_page.upper_part.train.isChecked()
 
     def setup_controller(self):
         ########## trigger ##########
@@ -188,7 +93,6 @@ class MainWindow_controller(QMainWindow):
         ########## tuning ###########
         #############################
 
-
         ##### capture signal #####
         self.capture.capture_fail_signal.connect(self.capture_fail)
         self.capture.log_info_signal.connect(self.ui.logger.show_info)
@@ -201,27 +105,29 @@ class MainWindow_controller(QMainWindow):
         self.ui.run_page.upper_part.alert_info_signal.connect(self.alert_info)
         self.tuning.alert_info_signal.connect(self.alert_info)
 
-        self.ui.param_page.push_and_save_block.set_param_value_signal.connect(self.set_param_value_slot)
-        self.ui.param_page.push_and_save_block.push_worker.push_to_camera_signal.connect(self.build_and_push_slot)
-        self.ui.param_page.push_and_save_block.get_UI_date_signal.connect(self.get_UI_data)
+        self.ui.param_page.push_and_save_block.get_and_set_param_value_signal.connect(self.get_and_set_param_value_slot)
+        self.ui.param_page.push_and_save_block.push_worker.push_to_camera_signal.connect(self.get_and_build_and_push_slot)
         
-        # # ML logger
-        # self.tuning.ML.log_info_signal.connect(self.ui.logger.show_info)
-
-    def set_param_value_slot(self):
+    def get_and_set_param_value_slot(self):
         key_config = self.config[self.setting["platform"]][self.setting["root"]][self.setting["key"]]
-        self.set_param_value[self.setting["platform"]](self.setting["key"], key_config, self.setting["project_path"], self.setting["trigger_idx"], self.setting["param_value"])
+        self.set_param_value_slot(self.setting["platform"], self.setting["key"], key_config, self.setting["project_path"], self.setting["trigger_idx"], self.setting["param_value"])
 
-    def build_and_push_slot(self):
+    def set_param_value_slot(self, platform, key, key_config, project_path, trigger_idx, param_value):
+        
+        self.set_param_value[platform](key, key_config, project_path, trigger_idx, param_value)
+
+    def get_and_build_and_push_slot(self):
+        self.setting["bin_name"] = self.ui.project_page.lineEdits_bin_name.text()
+        self.build_and_push_slot(self, self.setting["exe_path"], self.setting["project_path"], self.setting["bin_name"])
+
+    def build_and_push_slot(self, exe_path, project_path, bin_name):
         self.ui.logger.show_info('push bin to camera...')
         self.ui.logger.run_cmd('adb shell input keyevent = KEYCODE_HOME')
-        self.build_and_push[self.setting["platform"]](self.setting["exe_path"], self.setting["project_path"], self.setting["bin_name"])
+        self.build_and_push[self.setting["platform"]](exe_path, project_path, bin_name)
         self.capture.clear_camera_folder()
         self.ui.logger.show_info('wait for reboot camera...')
 
-    def onPlatformSelecterClicked(self):
-        self.ui.project_page.label_project_path.setText("")
-        self.ui.project_page.label_exe_path.setText("")
+    def set_platform_UI(self):
         if self.ui.project_page.platform_selecter.buttongroup1.checkedId() == 1:
             self.setting["platform"] = self.ui.project_page.platform_selecter.rb1.text()
             self.ui.project_page.setc6Form()
@@ -229,9 +135,13 @@ class MainWindow_controller(QMainWindow):
         if self.ui.project_page.platform_selecter.buttongroup1.checkedId() == 2:
             self.setting["platform"] = self.ui.project_page.platform_selecter.rb2.text()
             self.ui.project_page.setc7Form()
-        
-        
 
+    def onPlatformSelecterClicked(self):
+        self.ui.param_page.reset_UI()
+        self.ui.project_page.label_project_path.setText("")
+        self.ui.project_page.label_exe_path.setText("")
+        self.set_platform_UI()
+        
     def ISP_tree_itemClicked(self, item, col):
         if item.parent() is None: 
             if item.isExpanded():item.setExpanded(False)
@@ -266,7 +176,7 @@ class MainWindow_controller(QMainWindow):
     def select_project(self):
         path = QFileDialog.getExistingDirectory(self,"選擇project", self.ui.project_page.defult_path) # start path
         if path == "": return
-        self.ui.project_page.defult_path = path.split('/')[-2]
+        self.ui.project_page.defult_path = '/'.join(path.split('/')[:-1])
         self.ui.project_page.label_project_path.setText(path)
 
         self.ui.logger.show_info('\nset_project')
@@ -277,8 +187,9 @@ class MainWindow_controller(QMainWindow):
     def select_exe(self):
         path, filetype = QFileDialog.getOpenFileName(self,"選擇ParameterParser", self.ui.project_page.defult_path) # start path
         if path == "": return
-        self.ui.project_page.defult_path = path.split('/')[-2]
+        self.ui.project_page.defult_path = '/'.join(path.split('/')[:-1])
         self.ui.project_page.label_exe_path.setText(path)
+        self.setting["exe_path"] = path
 
     def set_project(self, project_path):
         self.ui.logger.show_info("set_project_XML")
@@ -369,6 +280,102 @@ class MainWindow_controller(QMainWindow):
         # print(title)
         self.ui.logger.signal.emit(text)
         QMessageBox.about(self, title, text)
+
+    def set_UI_data(self, setting):
+        key_data = self.setting[self.setting["root"]][self.setting["key"]]
+
+        ##### project_page #####
+        if "platform" in setting:
+            self.ui.project_page.platform_selecter.set_platform(setting["platform"])
+            self.set_platform_UI()
+
+        if "project_path" in setting:
+            self.ui.project_page.label_project_path.setText(setting["project_path"])
+
+            if os.path.exists(setting["project_path"]):
+                self.set_project(setting["project_path"])
+
+        if "exe_path" in setting:
+            self.ui.project_page.label_exe_path.setText(setting["exe_path"])
+        if "bin_name" in setting:
+            self.ui.project_page.lineEdits_bin_name.setText(setting["bin_name"])
+
+        ##### ROI_page #####
+        if os.path.exists('./capture.jpg'):
+            self.ui.ROI_page.set_photo('./capture.jpg')
+            if "roi" in setting:
+                self.ui.ROI_page.rois = setting["roi"]
+                self.ui.ROI_page.draw_ROI(self.ui.ROI_page.rois)
+
+        if 'target_type' in setting and len(setting["target_type"])>0:
+            assert len(setting["roi"]) == len(setting["target_type"])
+            for i in range(len(setting["target_type"])):
+                self.ui.ROI_page.add_to_table(setting["target_type"][i], setting["target_score"][i], setting["target_weight"][i])
+
+        ##### param_page #####
+        if "param_change_idx" in key_data: 
+            self.ui.param_page.param_modify_block.update_param_change_idx(key_data["param_change_idx"])
+
+        for i, name in enumerate(self.ui.param_page.hyper_setting_block.hyper_param_name):
+            if name in self.setting:
+                self.ui.param_page.hyper_setting_block.lineEdits_hyper_setting[i].setText(str(self.setting[name]))
+
+        if 'saved_dir_name' in self.setting:
+            self.ui.param_page.push_and_save_block.lineEdits_dir_name.setText(self.setting['saved_dir_name'])
+        if 'saved_img_name' in self.setting:
+            self.ui.param_page.push_and_save_block.lineEdits_img_name.setText(self.setting['saved_img_name'] )
+
+        ##### run page #####
+        if "TEST_MODE" in self.setting:
+            self.ui.run_page.upper_part.TEST_MODE.setChecked(self.setting["TEST_MODE"])
+            self.ui.run_page.upper_part.pretrain.setChecked(self.setting["PRETRAIN"])
+            self.ui.run_page.upper_part.train.setChecked(self.setting["TRAIN"])
+        
+    
+    def get_UI_data(self):
+        key_data = self.setting[self.setting["root"]][self.setting["key"]]
+
+        ##### project_page #####
+        # 在選擇時已儲存到setting
+        # self.setting["project_path"] = self.ui.project_page.label_project_path.text()
+        # self.setting["exe_path"] = self.ui.project_page.label_exe_path.text()
+        self.setting["bin_name"] = self.ui.project_page.lineEdits_bin_name.text()
+
+        ##### ROI_page #####
+        self.setting["roi"] = self.ui.ROI_page.rois
+
+        assert len(self.setting["roi"]) == self.ui.ROI_page.table.rowCount()
+        self.setting["target_type"] = []
+        self.setting["target_score"] = []
+        self.setting["target_weight"] = []
+        for i in range(self.ui.ROI_page.table.rowCount()):
+            self.setting["target_type"].append(self.ui.ROI_page.table.cellWidget(i, 0).text())
+            self.setting["target_score"].append(float(self.ui.ROI_page.table.cellWidget(i, 1).text()))
+            self.setting["target_weight"].append(float(self.ui.ROI_page.table.cellWidget(i, 2).text()))
+
+        ##### param_page #####
+        self.setting["trigger_idx"] = self.ui.param_page.trigger_selector.currentIndex()
+        self.setting["trigger_name"] = self.ui.param_page.trigger_selector.currentText()
+
+        key_data["param_value"] = self.ui.param_page.param_modify_block.get_param_value()
+        key_data["param_change_idx"] = self.ui.param_page.param_modify_block.get_param_change_idx()
+
+        key_data["coustom_range"] = []
+        for item in self.ui.param_page.param_range_block.param_range_items:
+            for lineEdit in item.lineEdits_coustom_range:
+                if lineEdit.text() != "": 
+                    key_data["coustom_range"].append(json.loads(lineEdit.text()))
+
+        for i, name in enumerate(self.ui.param_page.hyper_setting_block.hyper_param_name):
+            if self.ui.param_page.hyper_setting_block.lineEdits_hyper_setting[i].text()=="":
+                self.setting[name] = ""
+            else:
+                self.setting[name] = int(self.ui.param_page.hyper_setting_block.lineEdits_hyper_setting[i].text())
+
+        ##### run page #####
+        self.setting["TEST_MODE"] = self.ui.run_page.upper_part.TEST_MODE.isChecked()
+        self.setting["PRETRAIN"] = self.ui.run_page.upper_part.pretrain.isChecked()
+        self.setting["TRAIN"] = self.ui.run_page.upper_part.train.isChecked()
 
     def read_setting(self):
         if os.path.exists('setting.json'):

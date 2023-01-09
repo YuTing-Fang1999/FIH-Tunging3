@@ -104,29 +104,21 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
         self.show_info_by_key(["platform", "project_path", "exe_path", "bin_name"], self.data)
 
     def run(self):
-        self.measure_data = {}
-        
         self.TEST_MODE = self.data["TEST_MODE"]
         self.PRETRAIN = self.data["PRETRAIN"]
         self.TRAIN = self.data["TRAIN"]
 
         ##### param setting #####
-        self.platform = self.data["platform"]
         self.key = self.data["key"]
         self.key_config = self.config[self.data["platform"]][self.data["root"]][self.data["key"]]
-        key_data = self.data[self.data["root"]][self.data["key"]]
+        self.key_data = self.data[self.data["root"]][self.data["key"]]
 
         # config
         self.rule = self.key_config["rule"]
         self.step = self.key_config["step"]
         
-        # xml path
-        self.xml_path = self.data["project_path"] + self.key_config["file_path"]
-        if not os.path.exists(self.xml_path):
-            self.log_info_signal.emit("The {} doesn't exists".format(self.xml_path))
-            self.finish_signal.emit()
-            sys.exit()
-
+        # project setting
+        self.platform = self.data["platform"]
         self.exe_path = self.data["exe_path"]
         self.project_path = self.data["project_path"]
         self.bin_name = self.data["bin_name"]
@@ -140,20 +132,16 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
         self.F_optimiter = HyperOptimizer(init_value=0.7, final_value=0.7, method="constant")
         self.Cr_optimiter = HyperOptimizer(init_value=0.5, final_value=0.5, method="constant")
         
-        # params
-        self.param_names = self.key_config['param_names']
-
-        
         self.bounds = []
         col = sum(self.key_config["col"], [])
         for i in range(len(col)):
-            self.bounds.append([key_data["coustom_range"][i]]*col[i])
+            self.bounds.append([self.key_data["coustom_range"][i]]*col[i])
         self.bounds = sum(self.bounds, [])
         print(self.bounds)
 
-        self.param_value = np.array(key_data['param_value']) # 所有參數值
+        self.param_value = np.array(self.key_data['param_value']) # 所有參數值
         self.dimensions = len(self.param_value)
-        self.param_change_idx = key_data['param_change_idx'] # 需要tune的參數位置
+        self.param_change_idx = self.key_data['param_change_idx'] # 需要tune的參數位置
         self.param_change_num = len(self.param_change_idx) # 需要tune的參數個數
         self.trigger_idx = self.data["trigger_idx"]
         self.trigger_name = self.data["trigger_name"]
@@ -656,7 +644,7 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
             return np.array([self.fobj(param_value)]*len(self.target_type))
 
         # write param_value to xml
-        self.set_param_value[self.platform](self.key, self.key_config, self.xml_path, self.trigger_idx, param_value)
+        self.set_param_value[self.platform](self.key, self.key_config, self.project_path, self.trigger_idx, param_value)
 
         # compile project using bat. push bin code to camera
         self.build_and_push[self.platform](self.exe_path, self.project_path, self.bin_name)
