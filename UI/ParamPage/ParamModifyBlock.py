@@ -33,15 +33,6 @@ class GridModifyItem(QWidget):
         title_wraper.addWidget(self.checkBoxes_title)
         VLayout.addLayout(title_wraper)
 
-        idx = len(self.checkBoxes)
-        # for i in range(sum(col)):
-        #     checkBox = QCheckBox()
-        #     checkBox.setToolTip("打勾代表將值固定")
-        #     self.checkBoxes.append(checkBox)
-
-        #     lineEdit = QLineEdit()
-        #     self.lineEdits.append(lineEdit)
-
         for i in range(len(col)):
 
             label_name = QLabel()
