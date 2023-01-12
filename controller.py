@@ -4,22 +4,27 @@ from PyQt5.QtWidgets import (
     QVBoxLayout, QScrollArea, QSplitter,
     QFileDialog
 )
+from PyQt5.QtCore import Qt, pyqtSignal, QThread
 from myPackage.Capture import Capture
 from myPackage.Tuning.Tuning import Tuning
 from myPackage.read_param_value import read_c7_param_value, read_c6_param_value
 from myPackage.read_trigger_data import read_c7_trigger_data, read_c6_trigger_data
 from myPackage.set_param_value import set_c7_param_value, set_c6_param_value
-from myPackage.build_and_push import build_and_push_c7
+from myPackage.build_and_push import build_and_push_c7, build_and_push_c6
 
 import os
 import xml.etree.ElementTree as ET
 import json
 import threading
 import ctypes, inspect
+from time import sleep
+import cv2
 
 from UI.MainWindow import MainWindow
 
 class MainWindow_controller(QMainWindow):
+    set_ROI_page_photo_signal = pyqtSignal()
+
     def __init__(self):
         super().__init__() 
         self.read_param_value = {}
@@ -35,6 +40,7 @@ class MainWindow_controller(QMainWindow):
         self.set_param_value["c7project"] = set_c7_param_value
 
         self.build_and_push = {}
+        self.build_and_push["c6project"] = build_and_push_c6
         self.build_and_push["c7project"] = build_and_push_c7
 
         self.capture = Capture()
@@ -42,15 +48,15 @@ class MainWindow_controller(QMainWindow):
         self.config = self.read_config()
         
         self.ui = MainWindow()
-        self.ui.setup_UI(self, self.capture)
+        self.ui.setup_UI(self)
         self.set_UI_data(self.setting)
 
         self.capture.logger = self.ui.logger
+        self.capture.setting = self.setting
         self.tuning = Tuning( self.ui.run_page.lower_part, self.setting, self.config, self.capture, 
                                 self.set_param_value, self.build_and_push)
 
         self.setup_controller()
-        self.ui.param_page.push_and_save_block.capture_worker.capture = self.capture
 
     def setup_controller(self):
         ########## trigger ##########
@@ -105,27 +111,53 @@ class MainWindow_controller(QMainWindow):
         self.ui.run_page.upper_part.alert_info_signal.connect(self.alert_info)
         self.tuning.alert_info_signal.connect(self.alert_info)
 
+        # do_capture
+        self.ui.ROI_page.capture_signal.connect(self.do_capture_start)
+        self.ui.param_page.push_and_save_block.capture_signal.connect(self.do_capture_start)
+        self.set_ROI_page_photo_signal.connect(lambda: self.ui.ROI_page.set_photo("capture.jpg"))
+
         self.ui.param_page.push_and_save_block.get_and_set_param_value_signal.connect(self.get_and_set_param_value_slot)
-        self.ui.param_page.push_and_save_block.push_worker.push_to_camera_signal.connect(self.get_and_build_and_push_slot)
+        self.ui.param_page.push_and_save_block.push_to_camera_signal.connect(self.get_and_build_and_push_start)
         
     def get_and_set_param_value_slot(self):
         key_config = self.config[self.setting["platform"]][self.setting["root"]][self.setting["key"]]
-        self.set_param_value_slot(self.setting["platform"], self.setting["key"], key_config, self.setting["project_path"], self.setting["trigger_idx"], self.setting["param_value"])
+        param_value = self.ui.param_page.param_modify_block.get_param_value()
+        self.set_param_value[self.setting["platform"]](self.setting["key"], key_config, self.setting["project_path"], self.setting["trigger_idx"], param_value)
 
-    def set_param_value_slot(self, platform, key, key_config, project_path, trigger_idx, param_value):
-        
-        self.set_param_value[platform](key, key_config, project_path, trigger_idx, param_value)
-
-    def get_and_build_and_push_slot(self):
+    def get_and_build_and_push_start(self, is_capture):
         self.setting["bin_name"] = self.ui.project_page.lineEdits_bin_name.text()
-        self.build_and_push_slot(self, self.setting["exe_path"], self.setting["project_path"], self.setting["bin_name"])
+        # 建立一個子執行緒
+        self.push_task = threading.Thread(target=lambda: self.build_and_push_logger(self.setting["exe_path"], self.setting["project_path"], self.setting["bin_name"], is_capture))
+        # 當主程序退出，該執行緒也會跟著結束
+        self.push_task.daemon = True
+        # 執行該子執行緒
+        self.push_task.start()
 
-    def build_and_push_slot(self, exe_path, project_path, bin_name):
+    def build_and_push_logger(self, exe_path, project_path, bin_name, is_capture, saved_path):
+        self.ui.param_page.push_and_save_block.btn_enable(False)
         self.ui.logger.show_info('push bin to camera...')
         self.ui.logger.run_cmd('adb shell input keyevent = KEYCODE_HOME')
-        self.build_and_push[self.setting["platform"]](exe_path, project_path, bin_name)
+        self.build_and_push_logger[self.setting["platform"]](self.ui.logger, exe_path, project_path, bin_name)
         self.capture.clear_camera_folder()
         self.ui.logger.show_info('wait for reboot camera...')
+        sleep(7)
+        if is_capture: self.ui.param_page.push_and_save_block.do_capture(saved_path)
+        else:
+            self.ui.param_page.push_and_save_block.btn_enable(True)
+            self.ui.logger.show_info("done")
+
+    def do_capture_start(self, saved_path):
+        self.capture_task = threading.Thread(target=lambda: self.do_capture(saved_path))
+        self.capture_task.daemon = True
+        self.capture_task.start()
+
+    def do_capture(self, saved_path):
+        self.ui.ROI_page.btn_capture.setEnabled(False)
+        self.ui.param_page.push_and_save_block.set_btn_enable(False)
+        self.capture.capture(saved_path)
+        if(saved_path=="capture"): self.set_ROI_page_photo_signal.emit()
+        self.ui.ROI_page.btn_capture.setEnabled(True)
+        self.ui.param_page.push_and_save_block.set_btn_enable(True)
 
     def set_platform_UI(self):
         if self.ui.project_page.platform_selecter.buttongroup1.checkedId() == 1:
@@ -205,6 +237,11 @@ class MainWindow_controller(QMainWindow):
         #     self.ui.param_page.reset_UI()
         #     return
 
+        aec_trigger_datas = self.read_trigger_data[self.setting["platform"]](key_config, self.setting["project_path"])
+
+        self.ui.param_page.trigger_selector.update_UI(aec_trigger_datas)
+        self.ui.logger.show_info("Load {} Successfully".format(self.setting["project_name"]))
+
         ##### ISP_Tree #####
         tree_data = {}
         for root in self.config[self.setting["platform"]]:
@@ -215,17 +252,16 @@ class MainWindow_controller(QMainWindow):
                 tree_data[root].append(key)
         self.ui.param_page.ISP_tree.update_UI(tree_data)
 
-        aec_trigger_datas = self.read_trigger_data[self.setting["platform"]](key_config, self.setting["project_path"])
-
-        self.ui.param_page.trigger_selector.update_UI(aec_trigger_datas)
-        self.ui.logger.show_info("Load {} Successfully".format(self.setting["project_name"]))
         self.change_page_to(self.setting["root"], self.setting["key"])
+        
 
     def set_trigger_idx(self, trigger_idx):
         if trigger_idx==-1:
             self.ui.logger.signal.emit("set_trigger_idx return because trigger_idx=-1")
             return
         self.ui.logger.signal.emit('trigger_idx: {}'.format(trigger_idx))
+
+        self.setting["trigger_idx"] = trigger_idx
 
         key_config = self.config[self.setting["platform"]][self.setting["root"]][self.setting["key"]]
         
@@ -268,6 +304,8 @@ class MainWindow_controller(QMainWindow):
         self.ui.param_window.resize(400, 400)
         self.ui.param_window.showNormal()
 
+    
+
     def capture_fail(self):
         if self.tuning.is_run: self.ui.run_page.upper_part.mytimer.stopTimer()
         QMessageBox.about(self, "拍攝未成功", "拍攝未成功\n請多按幾次拍照鍵測試\n再按ok鍵重新拍攝")
@@ -297,8 +335,12 @@ class MainWindow_controller(QMainWindow):
 
         if "exe_path" in setting:
             self.ui.project_page.label_exe_path.setText(setting["exe_path"])
+        else:
+            setting["exe_path"] = ""
         if "bin_name" in setting:
             self.ui.project_page.lineEdits_bin_name.setText(setting["bin_name"])
+        else:
+            setting["bin_name"] = ""
 
         ##### ROI_page #####
         if os.path.exists('./capture.jpg'):
@@ -402,7 +444,6 @@ class MainWindow_controller(QMainWindow):
                 config[name.split('.')[0]] = json.load(f)
 
         return config
-             
 
     def write_setting(self):
         print('write_setting')

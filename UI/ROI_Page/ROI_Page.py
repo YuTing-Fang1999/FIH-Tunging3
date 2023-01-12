@@ -15,7 +15,6 @@ sys.path.append(".")
 from .ImageViewer import ImageViewer
 from .ROI_Select_Window import ROI_Select_Window
 from .MeasureWindow import MeasureWindow
-from myPackage.Capture import Capture
 import os
 import random
 
@@ -36,32 +35,15 @@ class DeleteBtn(QPushButton):
             self.page.rois.pop(row)
             self.page.draw_ROI(self.page.rois)
 
-class CaptureWorker(QThread):
-    set_photo_signal = pyqtSignal()
-    set_btn_enable_signal = pyqtSignal(bool)
-    def __init__(self, capture):
-        super().__init__()
-        self.capture = capture
-
-    def run(self):
-        self.set_btn_enable_signal.emit(False)
-        # capture 
-        img_name = 'capture'
-        self.capture.capture(img_name, focus_time = 4, save_time = 0.5, capture_num = 1)
-        self.set_photo_signal.emit()
-        self.set_btn_enable_signal.emit(True)
-        
-
 class ROI_Page(QWidget):
-    to_setting_signal = pyqtSignal(list, list, list)
     alert_info_signal = pyqtSignal(str, str)
+    capture_signal = pyqtSignal(str)
 
-    def __init__(self, capture):
+    def __init__(self):
         super().__init__()
         self.filefolder="./"
         self.rois = []
 
-        self.capture_worker = CaptureWorker(capture)
         self.setup_UI()
         self.setup_controller()
 
@@ -137,9 +119,7 @@ class ROI_Page(QWidget):
         self.btn_load_target_pic.clicked.connect(self.load_target_img)
 
         ##### capture #####
-        self.btn_capture.clicked.connect(self.capture_worker.start)
-        self.capture_worker.set_btn_enable_signal.connect(self.btn_capture.setEnabled)
-        self.capture_worker.set_photo_signal.connect(lambda: self.set_photo("capture.jpg"))
+        self.btn_capture.clicked.connect(lambda: self.capture_signal.emit("capture"))
         
     def select_ROI(self, my_x_y_w_h, my_roi_img, target_roi_img):
         self.measure_window.measure_target(my_x_y_w_h, my_roi_img, target_roi_img)

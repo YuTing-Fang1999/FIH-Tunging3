@@ -16,13 +16,14 @@ class Capture(QWidget):
     def __init__(self):
         super().__init__()
         self.CAMERA_DEBUG = False
-        self.CAMERA_PATH = '/sdcard/DCIM/Camera'
         self.state = threading.Condition()
         self.logger = None
+        self.setting = None
 
     def capture(self, path = "", focus_time = 4, save_time = 1, capture_num = 1):
 
-        self.open_camera()
+        rc = self.open_camera()
+        if rc!=0: return
         # sleep(focus_time) #wait for auto focus
         self.log_info_signal.emit('wait for auto focus')
         # sleep(focus_time)
@@ -35,29 +36,36 @@ class Capture(QWidget):
             self.press_camera_button()
             sleep(0.05) 
         sleep(save_time) #wait for save photo
+        if self.setting["platform"] == "c6project": sleep(0.5)
         self.transfer_img(path, capture_num)
 
     def open_camera(self):
         if self.CAMERA_DEBUG: self.log_info_signal.emit('\nopen_camera')
-        self.logger.run_cmd("adb shell am start -a android.media.action.STILL_IMAGE_CAMERA --ez com.google.assistant.extra.CAMERA_OPEN_ONLY true --ez android.intent.extra.CAMERA_OPEN_ONLY true --ez isVoiceQuery true --ez NoUiQuery true --es android.intent.extra.REFERRER_NAME android-app://com.google.android.googlequicksearchbox/https/www.google.com")
+        rc, r = self.logger.run_cmd("adb shell am start -a android.media.action.STILL_IMAGE_CAMERA --ez com.google.assistant.extra.CAMERA_OPEN_ONLY true --ez android.intent.extra.CAMERA_OPEN_ONLY true --ez isVoiceQuery true --ez NoUiQuery true --es android.intent.extra.REFERRER_NAME android-app://com.google.android.googlequicksearchbox/https/www.google.com")
+        return rc
 
     def clear_camera_folder(self):
         #delete from phone: adb shell rm self.CAMERA_PATH/*
         if self.CAMERA_DEBUG: self.log_info_signal.emit('\nclear_camera_folder')
         ######## 注意不要誤刪到系統!!!!! ########
-        rc, r = self.logger.run_cmd("adb shell rm -rf {}/*".format(self.CAMERA_PATH)) # 要回傳資料，所以不能用signal
-        if rc!=0: return
-
+        if self.setting["platform"] == "c7project":
+            rc, r = self.logger.run_cmd("adb shell rm -rf /sdcard/DCIM/Camera/*") # 要回傳資料，所以不能用signal
+        elif self.setting["platform"] == "c6project":
+            rc, r = self.logger.run_cmd("adb shell rm -rf /sdcard/DCIM/Camera/*") # 要回傳資料，所以不能用signal
+        
     def press_camera_button(self):
         #condition 1 screen on 2 camera open: adb shell input keyevent = CAMERA
         if self.CAMERA_DEBUG: self.log_info_signal.emit('\npress_camera_button')
-        rc, r = self.logger.run_cmd("adb shell input keyevent = CAMERA")
-        if rc!=0: return
+        if self.setting["platform"] == "c7project":
+            rc, r = self.logger.run_cmd("adb shell input keyevent = CAMERA")
+        elif self.setting["platform"] == "c6project":
+            rc, r = self.logger.run_cmd("adb shell input keyevent = KEYCODE_VOLUME_UP")
+        
 
     def transfer_img(self, path='', capture_num = 1):
         if self.CAMERA_DEBUG: self.log_info_signal.emit("\ntransfer_img")
         # list all file
-        rc, r = self.logger.run_cmd("adb shell ls -lt {}".format(self.CAMERA_PATH))
+        rc, r = self.logger.run_cmd("adb shell ls -lt {}".format("/sdcard/DCIM/Camera/"))
         if rc!=0: return
 
         # find the last num
@@ -72,10 +80,8 @@ class Capture(QWidget):
 
         else:
             for i in range(capture_num):
-                file_name = "{}/{}".format(self.CAMERA_PATH, file_names[i])
-                if path == "test/":
-                    p = 'test/'+file_name.split('/')[-1]
-                elif capture_num==1:
+                file_name = "/sdcard/DCIM/Camera/{}".format(file_names[i])
+                if capture_num==1:
                     p = str(path+".jpg")
                 else:
                     p = str(path+"_"+str(i)+".jpg")

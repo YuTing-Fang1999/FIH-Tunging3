@@ -39,14 +39,14 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
     run_cmd_signal = pyqtSignal(str)
     alert_info_signal = pyqtSignal(str, str)
 
-    def __init__(self, run_page_lower_part, data, config, capture, set_param_value, build_and_push):
+    def __init__(self, run_page_lower_part, setting, config, capture, set_param_value, build_and_push):
         super().__init__()
         self.run_page_lower_part = run_page_lower_part
         self.tab_info = self.run_page_lower_part.tab_info
         self.set_param_value = set_param_value
         self.build_and_push = build_and_push
         
-        self.data = data
+        self.setting = setting
         self.config = config
         self.capture = capture
         self.is_run = False
@@ -82,51 +82,51 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
         self.tab_info.label.setAlignment(Qt.AlignLeft)
         self.tab_info.clear()
 
-        key_config = self.config[self.data["platform"]][self.data["root"]][self.data["key"]]
-        key_data = self.data[self.data["root"]][self.data["key"]]
+        key_config = self.config[self.setting["platform"]][self.setting["root"]][self.setting["key"]]
+        key_data = self.setting[self.setting["root"]][self.setting["key"]]
 
         self.tab_info.show_info("\n###### Target ######")
-        self.show_info_by_key(["target_type", "target_score", "target_weight"], self.data)
+        self.show_info_by_key(["target_type", "target_score", "target_weight"], self.setting)
 
         self.tab_info.show_info("\n###### Tuning Block ######")
-        self.show_info_by_key(["root", "key"], self.data)
-        self.show_info_by_key(["trigger_idx", "trigger_name"], self.data)
+        self.show_info_by_key(["root", "key"], self.setting)
+        self.show_info_by_key(["trigger_idx", "trigger_name"], self.setting)
 
         self.tab_info.show_info("\n###### Differential evolution ######")
-        self.show_info_by_key(["population size","generations","capture num"], self.data)
+        self.show_info_by_key(["population size","generations","capture num"], self.setting)
         self.show_info_by_key(["coustom_range","param_change_idx"], key_data)
         self.tab_info.show_info("{}: {}".format("param_value", self.param_value))
 
         self.tab_info.show_info("\n###### Mode ######")
-        self.show_info_by_key(["TEST_MODE","PRETRAIN","TRAIN"], self.data)
+        self.show_info_by_key(["TEST_MODE","PRETRAIN","TRAIN"], self.setting)
 
         self.tab_info.show_info("\n###### Project Setting ######")
-        self.show_info_by_key(["platform", "project_path", "exe_path", "bin_name"], self.data)
+        self.show_info_by_key(["platform", "project_path", "exe_path", "bin_name"], self.setting)
 
     def run(self):
-        self.TEST_MODE = self.data["TEST_MODE"]
-        self.PRETRAIN = self.data["PRETRAIN"]
-        self.TRAIN = self.data["TRAIN"]
+        self.TEST_MODE = self.setting["TEST_MODE"]
+        self.PRETRAIN = self.setting["PRETRAIN"]
+        self.TRAIN = self.setting["TRAIN"]
 
         ##### param setting #####
-        self.key = self.data["key"]
-        self.key_config = self.config[self.data["platform"]][self.data["root"]][self.data["key"]]
-        self.key_data = self.data[self.data["root"]][self.data["key"]]
+        self.key = self.setting["key"]
+        self.key_config = self.config[self.setting["platform"]][self.setting["root"]][self.setting["key"]]
+        self.key_data = self.setting[self.setting["root"]][self.setting["key"]]
 
         # config
         self.rule = self.key_config["rule"]
         self.step = self.key_config["step"]
         
         # project setting
-        self.platform = self.data["platform"]
-        self.exe_path = self.data["exe_path"]
-        self.project_path = self.data["project_path"]
-        self.bin_name = self.data["bin_name"]
+        self.platform = self.setting["platform"]
+        self.exe_path = self.setting["exe_path"]
+        self.project_path = self.setting["project_path"]
+        self.bin_name = self.setting["bin_name"]
 
         # hyperparams
-        self.popsize = self.data['population size']
-        self.generations = self.data['generations']
-        self.capture_num = self.data['capture num']
+        self.popsize = self.setting['population size']
+        self.generations = self.setting['generations']
+        self.capture_num = self.setting['capture num']
         # self.Cr_optimiter = HyperOptimizer(init_value=0.3, final_value=0.8, method="exponantial_reverse", rate = 0.03)
         # self.F_optimiter = HyperOptimizer(init_value=0.7, final_value=1, method="exponantial_reverse", rate=0.03)
         self.F_optimiter = HyperOptimizer(init_value=0.7, final_value=0.7, method="constant")
@@ -142,45 +142,66 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
         self.param_value = np.array(self.key_data['param_value']) # 所有參數值
         self.dimensions = len(self.param_value)
         self.param_change_idx = self.key_data['param_change_idx'] # 需要tune的參數位置
+
         self.param_change_num = len(self.param_change_idx) # 需要tune的參數個數
-        self.trigger_idx = self.data["trigger_idx"]
-        self.trigger_name = self.data["trigger_name"]
+        self.trigger_idx = self.setting["trigger_idx"]
+        self.trigger_name = self.setting["trigger_name"]
         # test mode 下沒改動的地方為0
         if self.TEST_MODE: self.param_value = np.zeros(self.dimensions)
 
         # target score
         if self.TEST_MODE:
-            self.data["target_type"]=["TEST", "TEST2"]
-            self.data["target_score"]=[0]*len(self.data["target_type"])
-            self.data["target_weight"]=[1]*len(self.data["target_type"])
+            self.setting["target_type"]=["TEST", "TEST2"]
+            self.setting["target_score"]=[0]*len(self.setting["target_type"])
+            self.setting["target_weight"]=[1]*len(self.setting["target_type"])
 
-        self.target_type = np.array(self.data["target_type"])
-        self.target_IQM = np.array(self.data["target_score"])
-        self.weight_IQM = np.array(self.data["target_weight"])
+        self.target_type = np.array(self.setting["target_type"])
+        self.target_IQM = np.array(self.setting["target_score"])
+        self.weight_IQM = np.array(self.setting["target_weight"])
         self.target_num = len(self.target_type)
         self.std_IQM = np.ones(self.target_num)
         self.loss_plot.setup(self.target_type)
 
         # target region
-        self.roi = self.data['roi']
+        self.roi = self.setting['roi']
+
+        # 退火
+        self.T = 0.3
+        self.T_rate = 1
+        if self.TRAIN: self.T=10
 
         # get the bounds of each parameter
         self.min_b, self.max_b = np.asarray(self.bounds).T
         self.min_b = self.min_b[self.param_change_idx]
         self.max_b = self.max_b[self.param_change_idx]
         self.diff = np.fabs(self.min_b - self.max_b)
+
+        self.pop = []
+        for i in range(self.popsize):
+            p = np.random.rand(self.param_change_num)
+            p_denorm = self.min_b + p * self.diff
+            self.param_value[self.param_change_idx] = p_denorm
+            while(self.is_bad_trial(self.param_value)):
+                p = np.random.rand(self.param_change_num)
+                p_denorm = self.min_b + p * self.diff
+                self.param_value[self.param_change_idx] = p_denorm
+
+            p_denorm = self.round_nearest(p_denorm)
+            self.log_info_signal.emit(str(p_denorm))
+            self.pop.append((p_denorm-self.min_b)/self.diff)
+        self.pop = np.array(self.pop)
         
-        self.pop = np.random.rand(self.popsize, self.param_change_num)
+        # self.pop = np.random.rand(self.popsize, self.param_change_num)
         
-        pop_denorm = self.min_b + self.pop * self.diff
+        # pop_denorm = self.min_b + self.pop * self.diff
         
         # for p in pop_denorm:
         #     p[1] = p[0]+np.random.random()
 
         # step
-        pop_denorm = self.round_nearest(pop_denorm)
+        # pop_denorm = self.round_nearest(pop_denorm)
         
-        self.pop = (pop_denorm-self.min_b)/self.diff
+        # self.pop = (pop_denorm-self.min_b)/self.diff
         # self.log_info_signal.emit("pop: {}".format(self.pop.tolist()))
 
         # score
@@ -194,11 +215,7 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
         self.update_rate=0
         self.ML_update_rate=0
 
-        # 退火
-        self.T = 1
-        if self.TRAIN: self.T=10
-
-        if len(self.data["target_type"])==0:
+        if len(self.setting["target_type"])==0:
             self.alert_info_signal.emit("請先圈ROI", "請先圈ROI")
             self.finish_signal.emit()
             return
@@ -211,7 +228,7 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
         # csv data
         title = ["name", "score"]
         for t in self.target_type: title.append(t)
-        title.append(self.param_names)
+        title.append(self.key_config["param_names"])
         self.csv_data = [title]
         self.best_csv_data = [title]
 
@@ -236,7 +253,7 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
             
             target_type = self.target_type,
             std_IQM = self.std_IQM,
-            key = self.data["key"],
+            key = self.setting["key"],
             
             input_dim=self.dimensions, 
             output_dim=len(self.target_type)
@@ -572,11 +589,12 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
                 if val>rule["between"][1]: dif = -(val-rule["between"][1])
                 if val<rule["between"][0]: dif = (val-rule["between"][0])
                 p = math.exp(dif/self.T) # 差越大p越小，越容易傳True
-                self.log_info_signal.emit("{} {}".format(dif-val, p))
+                # self.log_info_signal.emit("{} {}".format(dif-val, p))
                 if p<np.random.random(): 
+                    self.log_info_signal.emit("bad param")
                     return True # p越小越容易比他大
         
-        self.T *= 0.8
+        self.T *= self.T_rate
         
         return False
 
@@ -647,7 +665,11 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
         self.set_param_value[self.platform](self.key, self.key_config, self.project_path, self.trigger_idx, param_value)
 
         # compile project using bat. push bin code to camera
+        self.log_info_signal.emit('push bin to camera...')
+        self.run_cmd_signal.emit('adb shell input keyevent = KEYCODE_HOME')
         self.build_and_push[self.platform](self.exe_path, self.project_path, self.bin_name)
+        self.capture.clear_camera_folder()
+        self.log_info_signal.emit('wait for reboot camera...')
         
         if self.TRAIN and train: self.start_ML_train()
         sleep(8)

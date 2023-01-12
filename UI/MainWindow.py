@@ -24,7 +24,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         
-    def setup_UI(self, MainWindow, capture):
+    def setup_UI(self, MainWindow):
         MainWindow.setWindowTitle("FIH-Tuning")
         self.param_window = Param_window()
         
@@ -35,7 +35,7 @@ class MainWindow(QMainWindow):
         self.tabWidget = QTabWidget(MainWindow)
 
         self.project_page = ProjectPage()
-        self.ROI_page = ROI_Page(capture)
+        self.ROI_page = ROI_Page()
         self.param_page = ParamPage()
         self.run_page = RunPage()
 
