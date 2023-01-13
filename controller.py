@@ -28,6 +28,7 @@ class MainWindow_controller(QMainWindow):
 
     def __init__(self):
         super().__init__() 
+        self.origin_dir = os.getcwd()
         self.get_file_path = {}
         self.get_file_path["c6project"] = get_file_path_c6
         self.get_file_path["c7project"] = get_file_path_c7
@@ -58,8 +59,9 @@ class MainWindow_controller(QMainWindow):
 
         self.capture.logger = self.ui.logger
         self.capture.setting = self.setting
-        self.tuning = Tuning( self.ui.run_page.lower_part, self.setting, self.config, self.capture, 
-                                self.set_param_value, self.build_and_push)
+        self.tuning = Tuning( self.ui.logger, self.ui.run_page.lower_part, 
+                                self.setting, self.config, self.capture, 
+                                self.set_param_value, self.build_and_push, self.get_file_path)
 
         self.setup_controller()
 
@@ -127,30 +129,30 @@ class MainWindow_controller(QMainWindow):
     def get_and_set_param_value_slot(self):
         key_config = self.config[self.setting["platform"]][self.setting["root"]][self.setting["key"]]
         param_value = self.ui.param_page.param_modify_block.get_param_value()
-        self.ui.logger.show_info('write {} to {}/{}'.format(param_value, self.setting["root"] ,self.setting["key"]))
+        self.ui.logger.show_info('write {} to {}/{}, trigger_idx: {}'.format(param_value, self.setting["root"] ,self.setting["key"], self.setting["trigger_idx"]))
         file_path = self.get_file_path[self.setting["platform"]](self.setting["project_path"], key_config["file_path"])
         self.set_param_value[self.setting["platform"]](self.setting["key"], key_config, file_path, self.setting["trigger_idx"], param_value)
 
-    def get_and_build_and_push_start(self, is_capture):
+    def get_and_build_and_push_start(self, is_capture, saved_path):
         self.setting["bin_name"] = self.ui.project_page.lineEdits_bin_name.text()
         # 建立一個子執行緒
-        self.push_task = threading.Thread(target=lambda: self.build_and_push_logger(self.setting["exe_path"], self.setting["project_path"], self.setting["bin_name"], is_capture))
+        self.push_task = threading.Thread(target=lambda: self.build_and_push_logger(self.setting["exe_path"], self.setting["project_path"], self.setting["bin_name"], is_capture, saved_path))
         # 當主程序退出，該執行緒也會跟著結束
         self.push_task.daemon = True
         # 執行該子執行緒
         self.push_task.start()
 
     def build_and_push_logger(self, exe_path, project_path, bin_name, is_capture, saved_path):
-        self.ui.param_page.push_and_save_block.btn_enable(False)
+        self.set_btn_enable("push")
         self.ui.logger.show_info('push bin to camera...')
         self.ui.logger.run_cmd('adb shell input keyevent = KEYCODE_HOME')
-        self.build_and_push_logger[self.setting["platform"]](self.ui.logger, exe_path, project_path, bin_name)
+        self.build_and_push[self.setting["platform"]](self.ui.logger, exe_path, project_path, bin_name)
         self.capture.clear_camera_folder()
         self.ui.logger.show_info('wait for reboot camera...')
         sleep(7)
-        if is_capture: self.ui.param_page.push_and_save_block.do_capture(saved_path)
+        if is_capture: self.do_capture(saved_path)
         else:
-            self.ui.param_page.push_and_save_block.btn_enable(True)
+            self.set_btn_enable("done")
             self.ui.logger.show_info("done")
 
     def do_capture_start(self, saved_path):
@@ -159,13 +161,11 @@ class MainWindow_controller(QMainWindow):
         self.capture_task.start()
 
     def do_capture(self, saved_path):
-        self.ui.ROI_page.btn_capture.setEnabled(False)
-        self.ui.param_page.push_and_save_block.set_btn_enable(False)
+        self.set_btn_enable("capture")
         self.capture.capture(saved_path)
         if(saved_path=="capture"): self.set_ROI_page_photo_signal.emit()
-        self.ui.ROI_page.btn_capture.setEnabled(True)
-        self.ui.param_page.push_and_save_block.set_btn_enable(True)
-
+        self.set_btn_enable("done")
+        
     def set_platform_UI(self):
         if self.ui.project_page.platform_selecter.buttongroup1.checkedId() == 1:
             self.setting["platform"] = self.ui.project_page.platform_selecter.rb1.text()
@@ -279,6 +279,7 @@ class MainWindow_controller(QMainWindow):
         file_path = self.get_file_path[self.setting["platform"]](self.setting["project_path"], key_config["file_path"])
         param_value = self.read_param_value[self.setting["platform"]](self.setting["key"], key_config, file_path, trigger_idx)
         self.ui.param_page.param_modify_block.update_param_value(param_value)
+        
 
     def run(self):
         if self.tuning.is_run:
@@ -290,10 +291,12 @@ class MainWindow_controller(QMainWindow):
         self.get_UI_data()
         self.ui.logger.clear_info()
         self.ui.logger.signal.emit("START")
+        self.set_btn_enable("run")
 
         self.tuning.is_run = True
         self.ui.run_page.upper_part.btn_run.setText('STOP')
         self.ui.run_page.upper_part.mytimer.startTimer()
+        
 
         # 建立一個子執行緒
         self.tuning_task = threading.Thread(target=lambda: self.tuning.run())
@@ -302,20 +305,22 @@ class MainWindow_controller(QMainWindow):
         # 執行該子執行緒
         self.tuning_task.start()
 
+
+
     def finish(self):
         self.ui.logger.signal.emit("STOP")
         self.tuning.is_run = False
         self.ui.run_page.upper_part.btn_run.setText('Run')
         self.ui.run_page.upper_part.mytimer.stopTimer()
-        self.tuning.ML.save_model()
+        self.set_btn_enable("done")
+        # self.tuning.ML.save_model()
+        os.chdir(self.origin_dir)
         stop_thread(self.tuning_task)
 
     def show_param_window(self):
         self.ui.param_window.close()
         self.ui.param_window.resize(400, 400)
         self.ui.param_window.showNormal()
-
-    
 
     def capture_fail(self):
         if self.tuning.is_run: self.ui.run_page.upper_part.mytimer.stopTimer()
@@ -329,6 +334,25 @@ class MainWindow_controller(QMainWindow):
         # print(title)
         self.ui.logger.signal.emit(text)
         QMessageBox.about(self, title, text)
+
+    def set_btn_enable(self, case):
+        if case=="run":
+            self.ui.project_page.set_btn_enable(False)
+            self.ui.ROI_page.btn_capture.setEnabled(False)
+            self.ui.param_page.push_and_save_block.set_btn_enable(False)
+        
+        elif case=="push" or case=="capture":
+            self.ui.project_page.set_btn_enable(False)
+            self.ui.ROI_page.btn_capture.setEnabled(False)
+            self.ui.param_page.push_and_save_block.set_btn_enable(False)
+            self.ui.run_page.upper_part.btn_run.setEnabled(False)
+
+        elif case=="done":
+            self.ui.project_page.set_btn_enable(True)
+            self.ui.ROI_page.btn_capture.setEnabled(True)
+            self.ui.param_page.push_and_save_block.set_btn_enable(True)
+            self.ui.run_page.upper_part.btn_run.setEnabled(True)
+
 
     def set_UI_data(self, setting):
         
@@ -428,6 +452,9 @@ class MainWindow_controller(QMainWindow):
                 self.setting[name] = ""
             else:
                 self.setting[name] = int(self.ui.param_page.hyper_setting_block.lineEdits_hyper_setting[i].text())
+        
+        self.setting['saved_dir_name'] = self.ui.param_page.push_and_save_block.lineEdits_dir_name.text()
+        self.setting['saved_img_name'] = self.ui.param_page.push_and_save_block.lineEdits_img_name.text()
 
         ##### run page #####
         self.setting["TEST_MODE"] = self.ui.run_page.upper_part.TEST_MODE.isChecked()

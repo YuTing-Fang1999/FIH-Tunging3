@@ -96,6 +96,10 @@ class ProjectPage(QWidget):
         self.label_bin_name.show()
         self.lineEdits_bin_name.show()
 
+    def set_btn_enable(self, b):
+        self.platform_selecter.setEnabled(b)
+        self.btn_select_project.setEnabled(b)
+
 
 
 

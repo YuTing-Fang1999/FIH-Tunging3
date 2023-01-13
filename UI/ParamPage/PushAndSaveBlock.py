@@ -75,6 +75,7 @@ class PushAndSaveBlock(QWidget):
         return "{}/{}".format(dir_name, img_name)
 
     def push_phone(self, is_capture, is_set_to_xml):
+        saved_path = "./"
         if is_capture:
             saved_path = self.get_saved_path()
             if os.path.exists(saved_path+".jpg"):

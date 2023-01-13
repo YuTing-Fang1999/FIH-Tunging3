@@ -57,7 +57,7 @@ class ROI_Page(QWidget):
         self.measure_window = MeasureWindow()
 
         self.table = QTableWidget()
-        self.headers = ["type", "score", "weight", "刪除紐"]
+        self.headers = ["type", "IQM", "weight", "刪除紐"]
         self.table.setColumnCount(len(self.headers))   ##设置列数
         self.table.setHorizontalHeaderLabels(self.headers)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -74,7 +74,7 @@ class ROI_Page(QWidget):
         self.btn_load_target_pic.setToolTip("選擇目標照片")
 
         self.btn_add_ROI_item = QPushButton()
-        self.btn_add_ROI_item.setText("增加區域")
+        self.btn_add_ROI_item.setText("增加ROI區域")
         self.btn_add_ROI_item.setToolTip("按下後會新增一個目標區域")
 
         self.GLayout = QGridLayout()
@@ -195,6 +195,7 @@ class ROI_Page(QWidget):
         self.img = img
         self.label_img.setPhoto(img)
         self.ROI_select_window.my_viewer.set_img(img)
+        self.draw_ROI(self.rois)
 
 if __name__ == '__main__':
     import sys
