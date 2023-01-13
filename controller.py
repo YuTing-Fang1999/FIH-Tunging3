@@ -7,9 +7,10 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, pyqtSignal, QThread
 from myPackage.Capture import Capture
 from myPackage.Tuning.Tuning import Tuning
-from myPackage.read_param_value import read_c7_param_value, read_c6_param_value
-from myPackage.read_trigger_data import read_c7_trigger_data, read_c6_trigger_data
-from myPackage.set_param_value import set_c7_param_value, set_c6_param_value
+from myPackage.get_file_path import get_file_path_c7, get_file_path_c6
+from myPackage.read_param_value import read_param_value_c7, read_param_value_c6
+from myPackage.read_trigger_data import read_trigger_data_c7, read_trigger_data_c6
+from myPackage.set_param_value import set_param_value_c7, set_param_value_c6
 from myPackage.build_and_push import build_and_push_c7, build_and_push_c6
 
 import os
@@ -27,17 +28,21 @@ class MainWindow_controller(QMainWindow):
 
     def __init__(self):
         super().__init__() 
+        self.get_file_path = {}
+        self.get_file_path["c6project"] = get_file_path_c6
+        self.get_file_path["c7project"] = get_file_path_c7
+
         self.read_param_value = {}
-        self.read_param_value["c6project"] = read_c6_param_value
-        self.read_param_value["c7project"] = read_c7_param_value
+        self.read_param_value["c6project"] = read_param_value_c6
+        self.read_param_value["c7project"] = read_param_value_c7
 
         self.read_trigger_data = {}
-        self.read_trigger_data["c6project"] = read_c6_trigger_data
-        self.read_trigger_data["c7project"] = read_c7_trigger_data
+        self.read_trigger_data["c6project"] = read_trigger_data_c6
+        self.read_trigger_data["c7project"] = read_trigger_data_c7
 
         self.set_param_value = {}
-        self.set_param_value["c6project"] = set_c6_param_value
-        self.set_param_value["c7project"] = set_c7_param_value
+        self.set_param_value["c6project"] = set_param_value_c6
+        self.set_param_value["c7project"] = set_param_value_c7
 
         self.build_and_push = {}
         self.build_and_push["c6project"] = build_and_push_c6
@@ -122,7 +127,9 @@ class MainWindow_controller(QMainWindow):
     def get_and_set_param_value_slot(self):
         key_config = self.config[self.setting["platform"]][self.setting["root"]][self.setting["key"]]
         param_value = self.ui.param_page.param_modify_block.get_param_value()
-        self.set_param_value[self.setting["platform"]](self.setting["key"], key_config, self.setting["project_path"], self.setting["trigger_idx"], param_value)
+        self.ui.logger.show_info('write {} to {}/{}'.format(param_value, self.setting["root"] ,self.setting["key"]))
+        file_path = self.get_file_path[self.setting["platform"]](self.setting["project_path"], key_config["file_path"])
+        self.set_param_value[self.setting["platform"]](self.setting["key"], key_config, file_path, self.setting["trigger_idx"], param_value)
 
     def get_and_build_and_push_start(self, is_capture):
         self.setting["bin_name"] = self.ui.project_page.lineEdits_bin_name.text()
@@ -172,6 +179,9 @@ class MainWindow_controller(QMainWindow):
         self.ui.param_page.reset_UI()
         self.ui.project_page.label_project_path.setText("")
         self.ui.project_page.label_exe_path.setText("")
+        self.ui.tabWidget.setTabEnabled(1, False)
+        self.ui.tabWidget.setTabEnabled(2, False)
+        self.ui.tabWidget.setTabEnabled(3, False)
         self.set_platform_UI()
         
     def ISP_tree_itemClicked(self, item, col):
@@ -224,36 +234,37 @@ class MainWindow_controller(QMainWindow):
         self.setting["exe_path"] = path
 
     def set_project(self, project_path):
-        self.ui.logger.show_info("set_project_XML")
-
-        key_config = self.config[self.setting["platform"]][self.setting["root"]][self.setting["key"]]
-        # xml_path = project_path + key_config["file_path"]
-
-        # # 從檔案載入並解析 XML 資料
-        # if not os.path.exists(xml_path):
-        #     self.ui.logger.show_info('Return because no such file: '+xml_path)
-        #     self.ui.logger.show_info("找不到參數檔案，請確認"+self.setting["project_name"]+"是否為"+self.setting["platform"])
-        #     self.ui.project_page.label_project_path.setText("找不到參數檔案，請確認"+self.setting["project_name"]+"是否為"+self.setting["platform"])
-        #     self.ui.param_page.reset_UI()
-        #     return
-
-        aec_trigger_datas = self.read_trigger_data[self.setting["platform"]](key_config, self.setting["project_path"])
-
-        self.ui.param_page.trigger_selector.update_UI(aec_trigger_datas)
-        self.ui.logger.show_info("Load {} Successfully".format(self.setting["project_name"]))
-
         ##### ISP_Tree #####
         tree_data = {}
         for root in self.config[self.setting["platform"]]:
-            if root not in self.setting: self.setting["root"] = {}
+            if "root" not in self.setting: self.setting["root"] = root
+            if root not in self.setting: self.setting[root] = {}
             tree_data[root] = []
             for key in self.config[self.setting["platform"]][root]:
+                if "key" not in self.setting: self.setting["key"] = key
                 if key not in self.setting[root]: self.setting[root][key] = {}
                 tree_data[root].append(key)
         self.ui.param_page.ISP_tree.update_UI(tree_data)
 
-        self.change_page_to(self.setting["root"], self.setting["key"])
+        key_config = self.config[self.setting["platform"]][self.setting["root"]][self.setting["key"]]
+        file_path = self.get_file_path[self.setting["platform"]](self.setting["project_path"], key_config["file_path"])
+        print(file_path)
+        if not os.path.exists(file_path): 
+            self.ui.logger.show_info("找不到"+file_path+"\n請確認"+self.setting["project_path"]+"是否為"+self.setting["platform"])
+            self.ui.project_page.label_project_path.setText("找不到"+file_path+"\n請確認"+self.setting["project_path"]+"是否為"+self.setting["platform"])
+            self.ui.param_page.reset_UI()
+            return
+        aec_trigger_datas = self.read_trigger_data[self.setting["platform"]](key_config, file_path)
         
+        
+        self.ui.param_page.trigger_selector.update_UI(aec_trigger_datas)
+        self.ui.logger.show_info("Load {} Successfully".format(self.setting["project_name"]))
+
+        self.ui.tabWidget.setTabEnabled(1, True)
+        self.ui.tabWidget.setTabEnabled(2, True)
+        self.ui.tabWidget.setTabEnabled(3, True)
+
+        self.change_page_to(self.setting["root"], self.setting["key"])
 
     def set_trigger_idx(self, trigger_idx):
         if trigger_idx==-1:
@@ -265,11 +276,11 @@ class MainWindow_controller(QMainWindow):
 
         key_config = self.config[self.setting["platform"]][self.setting["root"]][self.setting["key"]]
         
-        param_value = self.read_param_value[self.setting["platform"]](key_config, self.setting["project_path"], trigger_idx)
+        file_path = self.get_file_path[self.setting["platform"]](self.setting["project_path"], key_config["file_path"])
+        param_value = self.read_param_value[self.setting["platform"]](self.setting["key"], key_config, file_path, trigger_idx)
         self.ui.param_page.param_modify_block.update_param_value(param_value)
 
     def run(self):
-        print('click run btn')
         if self.tuning.is_run:
             self.finish()
         else:
@@ -320,7 +331,7 @@ class MainWindow_controller(QMainWindow):
         QMessageBox.about(self, title, text)
 
     def set_UI_data(self, setting):
-        key_data = self.setting[self.setting["root"]][self.setting["key"]]
+        
 
         ##### project_page #####
         if "platform" in setting:
@@ -355,8 +366,10 @@ class MainWindow_controller(QMainWindow):
                 self.ui.ROI_page.add_to_table(setting["target_type"][i], setting["target_score"][i], setting["target_weight"][i])
 
         ##### param_page #####
-        if "param_change_idx" in key_data: 
-            self.ui.param_page.param_modify_block.update_param_change_idx(key_data["param_change_idx"])
+        if "root" in self.setting:
+            key_data = self.setting[self.setting["root"]][self.setting["key"]]
+            if "param_change_idx" in key_data: 
+                self.ui.param_page.param_modify_block.update_param_change_idx(key_data["param_change_idx"])
 
         for i, name in enumerate(self.ui.param_page.hyper_setting_block.hyper_param_name):
             if name in self.setting:
@@ -375,7 +388,6 @@ class MainWindow_controller(QMainWindow):
         
     
     def get_UI_data(self):
-        key_data = self.setting[self.setting["root"]][self.setting["key"]]
 
         ##### project_page #####
         # 在選擇時已儲存到setting
@@ -399,14 +411,17 @@ class MainWindow_controller(QMainWindow):
         self.setting["trigger_idx"] = self.ui.param_page.trigger_selector.currentIndex()
         self.setting["trigger_name"] = self.ui.param_page.trigger_selector.currentText()
 
-        key_data["param_value"] = self.ui.param_page.param_modify_block.get_param_value()
-        key_data["param_change_idx"] = self.ui.param_page.param_modify_block.get_param_change_idx()
+        if "root" in self.setting:
+            key_data = self.setting[self.setting["root"]][self.setting["key"]]
 
-        key_data["coustom_range"] = []
-        for item in self.ui.param_page.param_range_block.param_range_items:
-            for lineEdit in item.lineEdits_coustom_range:
-                if lineEdit.text() != "": 
-                    key_data["coustom_range"].append(json.loads(lineEdit.text()))
+            key_data["param_value"] = self.ui.param_page.param_modify_block.get_param_value()
+            key_data["param_change_idx"] = self.ui.param_page.param_modify_block.get_param_change_idx()
+
+            key_data["coustom_range"] = []
+            for item in self.ui.param_page.param_range_block.param_range_items:
+                for lineEdit in item.lineEdits_coustom_range:
+                    if lineEdit.text() != "": 
+                        key_data["coustom_range"].append(json.loads(lineEdit.text()))
 
         for i, name in enumerate(self.ui.param_page.hyper_setting_block.hyper_param_name):
             if self.ui.param_page.hyper_setting_block.lineEdits_hyper_setting[i].text()=="":
@@ -426,15 +441,7 @@ class MainWindow_controller(QMainWindow):
 
         else:
             print("找不到設定檔，重新生成一個新的設定檔")
-            return {
-                "root": "OPE",
-                "key": "WNR",
-                "OPE":{
-                    "WNR":{}
-                },
-                "trigger_idx": 0,
-                "platform": "c7project"
-            }
+            return {}
 
     def read_config(self):
         assert os.path.exists('config')

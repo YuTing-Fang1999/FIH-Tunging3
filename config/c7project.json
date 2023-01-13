@@ -79,6 +79,9 @@
                 "layer_1_gain_positive_lut",
                 "layer_1_gain_negative_lut"
             ],
+            "defult_range": [
+                [0, 7.96875], [0, 7.96875]
+            ],
             "title": [
                 "layer_1_gain"
             ],

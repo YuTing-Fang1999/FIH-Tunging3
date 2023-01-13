@@ -13,7 +13,7 @@ class Logger(QWidget):
     def __init__(self):
         super().__init__()
         VLayout = QVBoxLayout(self)
-        self.info = QLabel("logger\n\n")
+        self.info = QLabel("")
         
         #Scroll Area Properties
         scroll = QScrollArea() 

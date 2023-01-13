@@ -9,14 +9,8 @@ from UI.ProjectPage.ProjectPage import ProjectPage
 from UI.ROI_Page.ROI_Page import ROI_Page
 from UI.ParamPage.ParamPage import ParamPage
 from UI.RunPage.RunPage import RunPage
-from myPackage.Setting import Setting
-from myPackage.Tuning.Tuning import Tuning
-from myPackage.Capture import Capture
 from myPackage.Param_window import Param_window
 from UI.Logger import Logger
-
-
-import json
 
 
 class MainWindow(QMainWindow):
@@ -43,6 +37,10 @@ class MainWindow(QMainWindow):
         self.tabWidget.addTab(self.ROI_page, "ROI設定")
         self.tabWidget.addTab(self.param_page, "參數設定")
         self.tabWidget.addTab(self.run_page, "執行")
+
+        self.tabWidget.setTabEnabled(1, False)
+        self.tabWidget.setTabEnabled(2, False)
+        self.tabWidget.setTabEnabled(3, False)
 
         Vsplitter.addWidget(self.tabWidget)
 

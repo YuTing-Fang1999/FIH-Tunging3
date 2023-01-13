@@ -2,10 +2,8 @@ import xml.etree.ElementTree as ET
 import os
 from myPackage.Array_Parser import Array_Parser
 
-def read_c7_trigger_data(key_config, project_path):
-    xml_path = project_path + key_config["file_path"]
-
-    tree = ET.parse(xml_path)
+def read_trigger_data_c7(key_config, file_path):
+    tree = ET.parse(file_path)
     root = tree.getroot()
 
     # 子節點與屬性
@@ -27,13 +25,8 @@ def read_c7_trigger_data(key_config, project_path):
 
     return aec_trigger_datas
 
-def read_c6_trigger_data(key_config, project_path):
-    project_name = os.listdir(project_path+'/src')[0]
-    # print(project_name)
-    path = project_path + '/src/' + project_name + key_config["file_path"] + project_name + "_snapshot_cpp.h"
-    # print(path)
-
-    with open(path, 'r', encoding='cp1252') as f:
+def read_trigger_data_c6(key_config, file_path):
+    with open(file_path, 'r', encoding='cp1252') as f:
         text = f.read()
 
     main_node = Array_Parser(list(text))
@@ -41,7 +34,6 @@ def read_c6_trigger_data(key_config, project_path):
         main_node = main_node.get(i)
     
     aec_trigger_datas = []
-    print(main_node.length())
     for i in range(main_node.length()):
         data = []
         data.append(''.join(main_node.get(i).get(key_config["trigger_node"]).get(2).text))
@@ -51,6 +43,4 @@ def read_c6_trigger_data(key_config, project_path):
         data = [float(d.replace('f','')) for d in data]
         aec_trigger_datas.append(data)
 
-    # print(''.join(main_node.reconstruct()))
-    print(aec_trigger_datas)
     return aec_trigger_datas

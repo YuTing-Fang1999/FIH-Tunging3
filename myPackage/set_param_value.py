@@ -6,11 +6,9 @@ import numpy as np
 from myPackage.Array_Parser import Array_Parser
 # from myPackage.func import curve_converter
 
-def set_c7_param_value(key, key_config, project_path, trigger_idx, param_value):
-    xml_path = project_path + key_config["file_path"]
-
+def set_param_value_c7(key, key_config, file_path, trigger_idx, param_value):
     # 從檔案載入並解析 XML 資料
-    tree = ET.parse(xml_path)
+    tree = ET.parse(file_path)
     root = tree.getroot()
 
     # 子節點與屬性
@@ -55,14 +53,10 @@ def set_c7_param_value(key, key_config, project_path, trigger_idx, param_value):
             break
 
     # write the xml file
-    tree.write(xml_path, encoding='UTF-8', xml_declaration=True)
+    tree.write(file_path, encoding='UTF-8', xml_declaration=True)
 
-def set_c6_param_value(key, key_config, project_path, trigger_idx, param_value):
-    project_name = os.listdir(project_path+'/src')[0]
-    # print(project_name)
-    path = project_path + '/src/' + project_name + key_config["file_path"] + project_name + "_snapshot_cpp.h"
-
-    with open(path, 'r', encoding='cp1252') as f:
+def set_param_value_c6(key, key_config, file_path, trigger_idx, param_value):
+    with open(file_path, 'r', encoding='cp1252') as f:
         text = f.read()
 
     arr_phaser = Array_Parser(list(text))
@@ -74,9 +68,16 @@ def set_c6_param_value(key, key_config, project_path, trigger_idx, param_value):
 
     idx = 0
     for param_idx in key_config["param_node"]:
-        for i in range(param_node.get(param_idx).length()):
-            param_node.get(param_idx).get(i).text = str(param_value[idx])
+        if key == "ASF" and param_idx==9: # 只需更改乘號後面的數值
+            for i in range(param_node.get(param_idx).length()):
+                t = param_node.get(param_idx).get(i).text
+                t[''.join(t).find('*')+1:] = str(param_value[idx])
+                param_node.get(param_idx).get(i).text = t
             idx+=1
+        else:
+            for i in range(param_node.get(param_idx).length()):
+                param_node.get(param_idx).get(i).text = str(param_value[idx])
+                idx+=1
 
-    with open(path, 'w', encoding='cp1252') as f:
+    with open(file_path, 'w', encoding='cp1252') as f:
         f.write(''.join(arr_phaser.reconstruct()))

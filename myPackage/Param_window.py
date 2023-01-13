@@ -147,10 +147,7 @@ class Param_window(QMainWindow):
             self.label_trial_denorm[idx][j].setText(str(np.round(trial_denorm[j], 4)))
 
         order = np.argsort(self.fitness)
-        # print(order)
         color = 255 - np.arange(0, 150, 150/self.popsize)
-        # print(color)
-        # print()
         for i, c in zip(order, color):
             self.label_score[i].setStyleSheet("color: rgb({0}, {0}, {0})".format(c))
 

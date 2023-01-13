@@ -2,10 +2,8 @@ import xml.etree.ElementTree as ET
 from myPackage.Array_Parser import Array_Parser
 import os
 
-def read_c7_param_value(key_config, project_path, trigger_idx):
-    xml_path = project_path + key_config["file_path"]
-
-    tree = ET.parse(xml_path)
+def read_param_value_c7(key, key_config, file_path, trigger_idx):
+    tree = ET.parse(file_path)
     root = tree.getroot()
 
     # 子節點與屬性
@@ -22,7 +20,6 @@ def read_c7_param_value(key_config, project_path, trigger_idx):
                     p = [float(x) for x in p]
                     
                 else:
-                    print(param_name)
                     parent = rgn_data.find(param_name)
                     p = parent.text.split(' ') 
                     p = [float(x) for x in p]
@@ -51,12 +48,8 @@ def read_c7_param_value(key_config, project_path, trigger_idx):
 
 
 
-def read_c6_param_value(key_config, project_path, trigger_idx):
-    project_name = os.listdir(project_path+'/src')[0]
-    # print(project_name)
-    path = project_path + '/src/' + project_name + key_config["file_path"] + project_name + "_snapshot_cpp.h"
-
-    with open(path, 'r', encoding='cp1252') as f:
+def read_param_value_c6(key, key_config, file_path, trigger_idx):
+    with open(file_path, 'r', encoding='cp1252') as f:
         text = f.read()
 
     main_node = Array_Parser(list(text))
@@ -67,10 +60,15 @@ def read_c6_param_value(key_config, project_path, trigger_idx):
 
     param_value = []
     for param_idx in key_config["param_node"]:
-        for i in range(param_node.get(param_idx).length()):
-            param_value.append(float((''.join(param_node.get(param_idx).get(i).text).replace('f',''))))
+        if key == "ASF" and param_idx==9: # 只需更改乘號後面的數值，取第一個值就好
+                t = ''.join(param_node.get(param_idx).get(i).text)
+                t = t[t.find('*')+1:]
+                param_value.append(float(t.replace('f','')))
+        else:
+            for i in range(param_node.get(param_idx).length()):
+                param_value.append(float(''.join(param_node.get(param_idx).get(i).text).replace('f','')))
 
-    print(param_value)
+    # print('read_param_value_c6', param_value)
     return param_value
 
 

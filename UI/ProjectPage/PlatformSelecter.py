@@ -24,8 +24,6 @@ class PlatformSelecter(QWidget):
         self.buttongroup1.addButton(self.rb1, 1)
         self.buttongroup1.addButton(self.rb2, 2)
 
-        self.rb2.setChecked(True)
-
         # Set Style
         self.setStyleSheet("QRadioButton{font-size:12pt; font-family:微軟正黑體; color:white;}"
                            "QLabel{font-size:12pt; font-family:微軟正黑體; color:white;}")
