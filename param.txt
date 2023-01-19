@@ -34,3 +34,8 @@ WNR []
 ASF 3 (手動調)
 ABF 預設
 
+gain 6.9-8.9
+WNR []
+ASF 3 (手動調)
+ABF 預設
+

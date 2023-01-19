@@ -77,7 +77,7 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
 
     
     def run(self):
-        self.is_rule = True
+        self.is_rule = False
         self.TEST_MODE = self.setting["TEST_MODE"]
         self.PRETRAIN = self.setting["PRETRAIN"]
         self.TRAIN = self.setting["TRAIN"]
@@ -102,10 +102,10 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
         self.popsize = self.setting['population size']
         self.generations = self.setting['generations']
         self.capture_num = self.setting['capture num']
-        self.Cr_optimiter = HyperOptimizer(init_value=0.8, final_value=0.4, method="exponantial_reverse", rate = 0.03)
-        self.F_optimiter = HyperOptimizer(init_value=0.4, final_value=0.8, method="exponantial_reverse", rate=0.03)
-        # self.F_optimiter = HyperOptimizer(init_value=0.7, final_value=0.7, method="constant")
-        # self.Cr_optimiter = HyperOptimizer(init_value=0.5, final_value=0.5, method="constant")
+        # self.Cr_optimiter = HyperOptimizer(init_value=0.8, final_value=0.4, method="exponantial_reverse", rate = 0.03)
+        # self.F_optimiter = HyperOptimizer(init_value=0.4, final_value=0.8, method="exponantial_reverse", rate=0.03)
+        self.F_optimiter = HyperOptimizer(init_value=0.7, final_value=0.7, method="constant")
+        self.Cr_optimiter = HyperOptimizer(init_value=0.5, final_value=0.5, method="constant")
         
         self.bounds = []
         col = sum(self.key_config["col"], [])
@@ -126,7 +126,7 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
 
         # target score
         if self.TEST_MODE:
-            self.setting["target_type"]=["TEST", "TEST2"]
+            self.setting["target_type"]=["TEST", "TEST2", "TEST3"]
             self.setting["target_score"]=[0]*len(self.setting["target_type"])
             self.setting["target_weight"]=[1]*len(self.setting["target_type"])
 
@@ -227,13 +227,13 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
 
 
     def initial_individual(self):
-        # 刪除資料夾
-        if os.path.exists('log'): shutil.rmtree('log')
-        if os.path.exists('best_photo'): shutil.rmtree('best_photo')
-        self.mkdir('log')
-        # self.mkdir('log/xml')
-        self.mkdir('best_photo')
-
+        if not self.TEST_MODE:
+            # 刪除資料夾
+            if os.path.exists('log'): shutil.rmtree('log')
+            if os.path.exists('best_photo'): shutil.rmtree('best_photo')
+            self.mkdir('log')
+            # self.mkdir('log/xml')
+            self.mkdir('best_photo')
         
         # self.mkdir('log/img')
         # self.mkdir('log/init')
@@ -421,7 +421,6 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
 
         # 如果突變種比原本的更好
         if f < self.fitness[ind_idx]:
-            self.best_csv_data[ind_idx+2] = data
             # update_param_window
             self.update_param_window_signal.emit(ind_idx, trial_denorm, f, now_IQM)
             
@@ -438,6 +437,7 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
 
             # 將圖片複製到best資料夾
             if not self.TEST_MODE:
+                self.best_csv_data[ind_idx+2] = data
                 for i in range(self.capture_num):
                     if self.capture_num==1:
                         src_img = 'ind{}_gne{}.jpg'.format(ind_idx, gen_idx)
@@ -495,31 +495,36 @@ class Tuning(QObject):  # 要繼承QWidget才能用pyqtSignal!!
 
     def get_best_trial(self, ind_idx, F, Cr, trial, trial_denorm):
         best_trial, best_trial_denorm = trial, trial_denorm
-        best_good_num = 0
+        best_good_num = self.target_num/2
         times = 0
         
         for i in range(20):
+            is_return, trial, trial_denorm = self.generate_parameters(ind_idx, F, Cr)
+            if is_return: break
+
             x = np.zeros(self.dimensions)
             x[self.param_change_idx] = trial - self.pop[ind_idx] # 參數差
             diff_target_IQM = self.target_IQM - self.IQMs[ind_idx] # 目標差
             # self.log_info_signal.emit(str(x))
             pred_dif_IQM = self.ML.predict(x)
-
+            self.log_info_signal.emit("pred_dif_IQM: {}".format(pred_dif_IQM)) 
             good_num = np.sum(pred_dif_IQM * self.weight_IQM * diff_target_IQM > 0)
-            if good_num > best_good_num:
+            self.log_info_signal.emit("good_num: {}".format(good_num)) 
+            if good_num >= best_good_num:
                 best_trial, best_trial_denorm = trial, trial_denorm
-                times = i
-                if good_num==self.target_num:
-                    break
+                self.log_info_signal.emit("get_best_trial times: {}".format(i))  
+                return best_trial, best_trial_denorm
+                # times = i
+                # if good_num==self.target_num:
+                #     break
 
-            bad_time = 0
-            while(self.is_bad_trial(trial_denorm) and bad_time<5):
-                is_return, trial, trial_denorm = self.generate_parameters(ind_idx, F, Cr)
-                # self.log_info_signal.emit('trial_denorm'+str(x))
-                if(is_return): break
-                bad_time+=1
-
-        self.log_info_signal.emit("get_best_tria times: {}".format(times))  
+            # bad_time = 0
+            # while(self.is_bad_trial(trial_denorm) and bad_time<5):
+            #     is_return, trial, trial_denorm = self.generate_parameters(ind_idx, F, Cr)
+            #     # self.log_info_signal.emit('trial_denorm'+str(x))
+            #     if(is_return): break
+            #     bad_time+=1
+        self.log_info_signal.emit("get_best_trial times: {}".format(times))  
         return best_trial, best_trial_denorm
 
     # def is_bad(self, trial, ind_idx, times):

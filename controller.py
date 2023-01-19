@@ -6,7 +6,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QThread
 from myPackage.Capture import Capture
-from myPackage.Tuning.Tuning import Tuning
+### 目前改成Tuning2!!! ###
+from myPackage.Tuning.Tuning2 import Tuning
 from myPackage.get_file_path import get_file_path_c7, get_file_path_c6
 from myPackage.read_param_value import read_param_value_c7, read_param_value_c6
 from myPackage.read_trigger_data import read_trigger_data_c7, read_trigger_data_c6
@@ -162,7 +163,7 @@ class MainWindow_controller(QMainWindow):
 
     def do_capture(self, saved_path):
         self.set_btn_enable("capture")
-        self.capture.capture(saved_path)
+        self.capture.capture(saved_path, capture_num=1)
         if(saved_path=="capture"): self.set_ROI_page_photo_signal.emit()
         self.set_btn_enable("done")
         
