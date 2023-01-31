@@ -3,7 +3,19 @@ from PyQt5.QtWidgets import (
     QWidget, QGridLayout, QHBoxLayout, QVBoxLayout,
     QPushButton, QLabel, QLineEdit, QCheckBox
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QComboBox
+
+class MethodSelector(QComboBox):
+    def __init__(self):
+        super().__init__()
+
+        self.setStyleSheet("font-size:12pt; font-family:微軟正黑體; background-color: rgb(255, 255, 255);")
+
+        item_names = ["globel search", "local search"]
+        self.clear()
+        self.addItems(item_names) # -> set_trigger_idx 0
+
+        
 
 class HyperSettingBlock(QWidget):
     def __init__(self):
@@ -39,20 +51,19 @@ class HyperSettingBlock(QWidget):
         VLayout.addLayout(title_wraper)
         VLayout.addLayout(gridLayout)
 
-    # def update_UI(self):
-    #     self.data = self.ui.data
-    #     for i in range(len(self.hyper_param_name)):
-    #         if self.hyper_param_name[i] in self.data:
-    #             self.lineEdits_hyper_setting[i].setText(str(self.data[self.hyper_param_name[i]]))
+        self.method_selector = MethodSelector()
+        self.method_intro = QLabel()
+        self.method_selector.currentIndexChanged[int].connect(self.set_idx)
+        self.set_idx(0)
 
-    # def set_data(self):
-    #     print("set hyper param data")
-    #     fill=True
-    #     for i in range(len(self.hyper_param_name)):
-    #         if self.lineEdits_hyper_setting[i].text()=="":
-    #             self.data[self.hyper_param_name[i]] = ""
-    #             fill = False
-    #         else:
-    #             self.data[self.hyper_param_name[i]] = int(self.lineEdits_hyper_setting[i].text())
-    #     return fill
+        VLayout.addWidget(self.method_selector)
+        VLayout.addWidget(self.method_intro)
+
+    def set_idx(self, idx):
+        if idx==0:
+            self.method_intro.setText("globel search\n使用差分進化演算法\n隨機重新產生")
+        if idx==1:
+            self.method_intro.setText("globel search\n使用Nelder-Mead Simplex\n用前一個gain的參數當做初始化參數\n(不能用於第一個gain)")
+
+
 
